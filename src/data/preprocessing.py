@@ -55,7 +55,7 @@ from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 from sklearn.impute import SimpleImputer
 import category_encoders as ce
 
-def prepreprocessing_pipeline(X, y, numerical_cols, ordinal_cols, ordinal_categories, nominal_cols, bool_cols):
+def prepreprocessing_pipeline(X, numerical_cols, ordinal_cols, ordinal_categories, nominal_cols, bool_cols):
     """
     Returns a fitted preprocessor and the transformed data.
     
@@ -79,7 +79,6 @@ def prepreprocessing_pipeline(X, y, numerical_cols, ordinal_cols, ordinal_catego
     X_processed : np.ndarray
         Transformed features
     """
-    
     # Numerical pipeline: impute + scale
     numerical_pipeline = Pipeline([
         ('imputer', SimpleImputer(strategy='median')),
@@ -97,7 +96,7 @@ def prepreprocessing_pipeline(X, y, numerical_cols, ordinal_cols, ordinal_catego
     # Nominal pipeline: impute + target encode
     nominal_pipeline = Pipeline([
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('encoder', ce.TargetEncoder())
+        ('encoder', ce.CountEncoder())
     ])
 
     bool_pipeline = Pipeline([
@@ -110,26 +109,48 @@ def prepreprocessing_pipeline(X, y, numerical_cols, ordinal_cols, ordinal_catego
         ('num', numerical_pipeline, numerical_cols),
         ('ord', ordinal_pipeline, ordinal_cols),
         ('bool', bool_pipeline, bool_cols),
-        ('nom_passthrough', 'passthrough', nominal_cols)
+        ('nom', nominal_pipeline, nominal_cols)
     ])
 
-    X_nom = nominal_pipeline.fit_transform(X[nominal_cols],y)
-    X2 = X.copy()
-    X2[nominal_cols] = X_nom
+    #X_nom = nominal_pipeline.fit_transform(X[nominal_cols])
+    #X2 = X.copy()
+    #X2[nominal_cols] = X_nom
 
     # Fit and transform
-    X_processed = preprocessor.fit_transform(X2)
+    X_processed = preprocessor.fit_transform(X)
     
-    return preprocessor, nominal_pipeline, X_processed
+    return preprocessor, X_processed
 
-def apply_preprocessing_pipeline(X, preprocessor, nominal_pipeline, nominal_cols):
-    # Tranform nominal values using TargetEncoder
-    X_nom = nominal_pipeline.transform(X[nominal_cols])
-    # Replace nominal columns with encoded values
-    X2 = X.copy()
-    X2[nominal_cols] = X_nom
+# def apply_preprocessing_pipeline(X, preprocessor, nominal_pipeline, nominal_cols, global_mean):
+#     # Tranform nominal values using TargetEncoder
+#     X_nom = nominal_pipeline.transform(X[nominal_cols])
+#     # Replace nominal columns with encoded values
+#     X2 = X.copy()
+#     X2[nominal_cols] = X_nom
+#     X2[nominal_cols] = X2[nominal_cols].fillna(global_mean)
+#     # Apply the main Column Transformer
+#     X_processed = preprocessor.transform(X2)
+#     return X_processed
+
+def apply_preprocessing_pipeline(X, preprocessor):
     # Apply the main Column Transformer
-    X_processed = preprocessor.transform(X2)
+    X_processed = preprocessor.transform(X)
     return X_processed
+
+def get_feature_names_from_column_transformer(ct):
+    feature_names = []
+
+    for name, transformer, cols in ct.transformers_:
+        if name != 'remainder' and transformer != 'drop':
+            # If pipeline, get last step names if available
+            if hasattr(transformer, 'named_steps'):
+                last_step = list(transformer.named_steps.values())[-1]
+                if hasattr(last_step, 'get_feature_names_out'):
+                    feature_names.extend(last_step.get_feature_names_out(cols))
+                else:
+                    feature_names.extend(cols)
+            else:
+                feature_names.extend(cols)
+    return feature_names
 
 
