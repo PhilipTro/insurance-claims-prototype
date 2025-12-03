@@ -1,6 +1,7 @@
+from itertools import dropwhile
 from pathlib import Path
 import pandas as pd
-import numpy
+import numpy as np
 import category_encoders as ce
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -13,6 +14,14 @@ def load_data(file_path:Path) -> pd.DataFrame:
     return pd.read_csv(file_path)
 
 def clean_data(data:pd.DataFrame) -> pd.DataFrame:
+    """Performs rudimentary data cleaning for prototyping
+
+    Args:
+        data (pd.DataFrame): raw prototype dataset
+
+    Returns:
+        pd.DataFrame: Cleaned dataset
+    """
     cleaned_data = data.copy()
     # Handling of duplicate data
     if cleaned_data.duplicated().any():
@@ -33,6 +42,16 @@ def clean_data(data:pd.DataFrame) -> pd.DataFrame:
     
 
 def split_data(data:pd.DataFrame, target:str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+    """Splits the data according to a train_val_test split. Where the ratios are 70-15-15 percent. 
+
+    Args:
+        data (pd.DataFrame): Raw dataset
+        target (str): target feature (for either regression task or classification task)
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]: The split data set is returned as a tuple of X (dataset sans 
+        target variable) and y (Target variable). A Xy pair is returned for each instance split. 
+    """
     # Funcion for splitting into train_test_val
     X, y = data[[col for col in data.columns if col not in target]], data[target]
 
@@ -56,28 +75,24 @@ from sklearn.impute import SimpleImputer
 import category_encoders as ce
 
 def prepreprocessing_pipeline(X, numerical_cols, ordinal_cols, ordinal_categories, nominal_cols, bool_cols):
-    """
-    Returns a fitted preprocessor and the transformed data.
-    
-    Parameters
-    ----------
-    X : pd.DataFrame 
-        Feature dataframe
-    numerical_cols : list
-        List of numerical columns
-    ordinal_cols : list
-        List of ordinal categorical columns
-    ordinal_categories : list of lists
-        Ordered categories for each ordinal column
-    nominal_cols : list
-        List of nominal categorical columns
-    
-    Returns
-    -------
-    preprocessor : ColumnTransformer
-        Fitted preprocessor
-    X_processed : np.ndarray
-        Transformed features
+    """Creates a flexible preprocessing pipeline meant to handle numerical, ordinal, nominal and boolean values. 
+       The pipeline is created using sklearn.pipeline.Pipeline(), where a pipeline is created for each type of value.
+       The Numerical pipeline consists of a SimpleImputer() and a StandardScaler(). The Ordinal pipeline utilises 
+       a SimpleImputer() and a OrdinalEncoder(). The Nominal Pipeline consists of a SimpleImputer() and a CountEncoder(). 
+       The Boolean pipeline also utilizes a StandardImputer, and encoded False as 0 and True as 1.
+       CountEncoder was picked in order to prevent data leakage, and in order to make the pipeline more flexible when switching between
+       regression and classification tasks. All of the pipelines are combined in a ColumnTransformer() which is called on the entire dataset.
+
+    Args:
+        X (_type_): The X matrix of the training set
+        numerical_cols (_type_): List of numerical columns in the training set
+        ordinal_cols (_type_): List of ordinal columns in the training set
+        ordinal_categories (_type_): List of categories for each ordinal variable (i.e [low, medium, high])
+        nominal_cols (_type_): List of nominal columns in the training set
+        bool_cols (_type_): List of Boolean columns
+
+    Returns:
+        tuple[ColumnTransformer, ndarray]: fitted preprocessing pipeline and processed training set.
     """
     # Numerical pipeline: impute + scale
     numerical_pipeline = Pipeline([
@@ -111,32 +126,29 @@ def prepreprocessing_pipeline(X, numerical_cols, ordinal_cols, ordinal_categorie
         ('bool', bool_pipeline, bool_cols),
         ('nom', nominal_pipeline, nominal_cols)
     ])
-
-    #X_nom = nominal_pipeline.fit_transform(X[nominal_cols])
-    #X2 = X.copy()
-    #X2[nominal_cols] = X_nom
-
-    # Fit and transform
     X_processed = preprocessor.fit_transform(X)
     
     return preprocessor, X_processed
 
-# def apply_preprocessing_pipeline(X, preprocessor, nominal_pipeline, nominal_cols, global_mean):
-#     # Tranform nominal values using TargetEncoder
-#     X_nom = nominal_pipeline.transform(X[nominal_cols])
-#     # Replace nominal columns with encoded values
-#     X2 = X.copy()
-#     X2[nominal_cols] = X_nom
-#     X2[nominal_cols] = X2[nominal_cols].fillna(global_mean)
-#     # Apply the main Column Transformer
-#     X_processed = preprocessor.transform(X2)
-#     return X_processed
-
 def apply_preprocessing_pipeline(X, preprocessor):
+    """Applies the preprocessing pipeline to the test and val sets, excluding the target variable
+
+    Args:
+        X (_type_): Test or Val set
+        preprocessor (_type_): preprocessing ColumnTransformer
+
+    Returns:
+        _type_: Processed data
+    """
     # Apply the main Column Transformer
     X_processed = preprocessor.transform(X)
     return X_processed
 
+def remove_null(X, y):
+    not_null_mask = y.notnull()
+    X = X[not_null_mask].copy()
+    y = y[not_null_mask].copy()
+    return X, y
 def get_feature_names_from_column_transformer(ct):
     feature_names = []
 
