@@ -56,7 +56,7 @@ def optimize(X,y, X_val, y_val):
     return {'model':best_model, 'params':best_params, 'MAE':best_mae}
 
 def CV_optimize(X, y):
-    model = TweedieRegressor(link='log',max_iter=10000)
+    model = TweedieRegressor(link='log',max_iter=100000)
     parameters = {'power':[x for x in np.arange(1.0, 2.0, 0.1)], 
                   'alpha':[x for x in np.arange(0, 1.0, 0.1)]}
     cv = GridSearchCV(model, parameters, scoring='neg_mean_absolute_error', refit=True)

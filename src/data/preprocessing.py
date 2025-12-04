@@ -33,10 +33,20 @@ def clean_data(data:pd.DataFrame) -> pd.DataFrame:
     # handling missing data
     numeric_columns = cleaned_data.select_dtypes(include='number').columns
     cat_columns = cleaned_data.select_dtypes(include='object').columns
+    bool_columns = cleaned_data.select_dtypes(include='boolean').columns
+    bool_imputer = SimpleImputer(strategy='most_frequent')
     num_imputer = SimpleImputer(strategy='mean')
     cat_imputer = SimpleImputer(strategy='most_frequent')
-    cleaned_data[numeric_columns] = num_imputer.fit_transform(data[numeric_columns])
-    cleaned_data[cat_columns] = cat_imputer.fit_transform(data[cat_columns])
+    cleaned_data[numeric_columns] = num_imputer.fit_transform(cleaned_data[numeric_columns])
+    cleaned_data[cat_columns] = cat_imputer.fit_transform(cleaned_data[cat_columns])
+    cleaned_data[bool_columns] = bool_imputer.fit_transform(cleaned_data[bool_columns])
+    date_columns = cleaned_data.select_dtypes(include='datetime').columns
+    cleaned_data[bool_columns] = cleaned_data[bool_columns].astype('int64')
+    for col in date_columns:
+        cleaned_data[col + "_year"] = cleaned_data[col].dt.year # type: ignore
+        cleaned_data[col + "_month"] = cleaned_data[col].dt.month # type: ignore
+        cleaned_data[col + "_day"] = cleaned_data[col].dt.day # type: ignore
+        cleaned_data[col + "_weekday"] = cleaned_data[col].dt.dayofweek # type: ignore
 
     return cleaned_data
     
