@@ -23,9 +23,14 @@ filtered_df = df[df['policy_state'] == policy_state]
 
 #KPI's
 
-st.metric("Total policies", len(filtered_df))
-st.metric("Total claim amount", int(filtered_df['total_claim_amount'].sum()))
-st.metric("Average Claim amount", round(filtered_df['total_claim_amount'].mean(), 2))
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric("Total policies", len(filtered_df))
+with col2:
+    st.metric("Total claim amount", int(filtered_df['total_claim_amount'].sum()))
+with col3:
+    st.metric("Average Claim amount", round(filtered_df['total_claim_amount'].mean(), 2))
 
 st.subheader("Correlation Heatmap")
 num_cols = df.select_dtypes('number').columns
