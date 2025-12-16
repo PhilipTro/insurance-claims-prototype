@@ -7,6 +7,7 @@ from sklearn.metrics import roc_auc_score, f1_score, classification_report
 from pathlib import Path
 import os
 import sys
+from sklearn.metrics import confusion_matrix
 
 PROJECT_ROOT = Path.home() / "desktop" / "Insurance_Project"
 
@@ -21,6 +22,11 @@ def load_data(switch = True):
     
 def train_classifier(X, y, models=None, param_grid=None):
     y = y.squeeze()
+    scoring = {
+        'roc_auc': 'roc_auc',
+        'f1': 'f1'
+    }
+
     if models==None:
         scale_pos_weight = (y == 0).sum() / (y == 1).sum()
         models = {
@@ -46,11 +52,13 @@ def train_classifier(X, y, models=None, param_grid=None):
             grid = GridSearchCV(
                 estimator=model,
                 param_grid=param_grid[name],
-                scoring='roc_auc',
+                scoring=scoring,
+                refit='f1',
                 cv=5,
                 n_jobs=1,
                 verbose=1
             )
+            
             grid.fit(X, y)
             best_model = grid.best_estimator_
             best_params = grid.best_params_
@@ -84,7 +92,8 @@ def evaluate_classifer(X, y , raw_models:dict):
         results[name] = {
             'roc_auc':roc_auc_score(y, y_prob),
             'f1_score':f1_score(y,y_pred),
-            'classification_report':classification_report(y,y_pred)
+            'classification_report':classification_report(y,y_pred),
+            'confusion_matrix':confusion_matrix(y,y_pred)
         }        
     
     return results

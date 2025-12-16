@@ -87,12 +87,34 @@ def split_data(data:pd.DataFrame, target:str) -> tuple[pd.DataFrame, pd.DataFram
     return X_train, X_test, X_val, y_train, y_test, y_val
 
 def split_data_for_classification(data, target):
-    q3 = data[target].quantile(0.75)
-    data['severe'] = (data[target] >= q3).astype(int)
+    t = data[target].quantile(0.8)
+    data['severe'] = (data[target] >= t).astype(int)
     X, y = data[[col for col in data.columns if col not in (target, 'severe')]], data['severe']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
     print(y.value_counts(normalize=True))
     return X_train, X_test, y_train, y_test
+def split_data_for_classification_fraud(data, target):
+    X, y = data[[col for col in data.columns if col not in (target)]], data[target]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42, stratify=y)
+    print(y.value_counts(normalize=True))
+    return X_train, X_test, y_train, y_test
+
+
+from imblearn.over_sampling import SMOTE
+
+def oversampling(X, y):
+    """Oversamples the minority class in the training data, uses automatic strategy. 
+
+    Args:
+        X (_type_): X Matrix
+        y (_type_): y vector
+
+    Returns:
+        _type_: X Matrix (resamples), y vector (resampled)
+    """
+    sm = SMOTE(random_state=42)
+    X_res, y_res = sm.fit_resample(X,y) #type: ignore
+    return X_res, y_res
 
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
