@@ -1,3 +1,5 @@
+from ast import Index
+from typing import Any
 import pandas as pd 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +13,7 @@ def load_data(filepath):
     return pd.read_csv(filepath)
 
 def kmeans_cluster(X, random_state=42):
+    sil = -1
     for n_clusters in range(2,11):
         km = KMeans(n_clusters=n_clusters, init='k-means++', n_init=n_clusters, random_state=random_state)
         model = km.fit(X)
@@ -21,9 +24,9 @@ def kmeans_cluster(X, random_state=42):
             sil = test_sil
     best_model = KMeans(n_clusters=best_n, init='k-means++', n_init=best_n, random_state=random_state).fit(X)
     labels = best_model.labels_
-    return labels, best_model
+    return labels, best_model, sil
 
-def kmeans_add_labels_and_cluster_centers(df_clean:pd.DataFrame, labels:np.ndarray, features:list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+def kmeans_add_labels_and_cluster_centers(df_clean:pd.DataFrame, labels:np.ndarray, features) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Function for adding labels to original dataset, and for producing a dataframe of the final cluster centroids
 
     Args:
@@ -68,7 +71,7 @@ def plot_clusters_2d(X_pca:np.ndarray, labels:np.ndarray, title:str = "Cluster p
     plt.show()
 
 
-def elbow_inertia(X:np.ndarray, k_min:int = 1, k_max:int = 10, random_state:int = 42) -> list[float]:
+def elbow_inertia(X:np.ndarray | pd.DataFrame, k_min:int = 1, k_max:int = 10, random_state:int = 42) -> list[float]:
     """Function for collecting interitias from different amounts of clusters when implementing Kmeans
 
     Args:
@@ -83,3 +86,37 @@ def elbow_inertia(X:np.ndarray, k_min:int = 1, k_max:int = 10, random_state:int 
     inertias = [KMeans(n_clusters=k, init='k-means++', n_init=k, random_state=random_state).fit(X).inertia_ for k in range(k_min, k_max+1)]
     assert len(inertias) == (k_max - k_min +1)
     return inertias 
+
+def dbscan_clusters(X:np.ndarray|pd.DataFrame) -> tuple[np.ndarray, DBSCAN, float, int]:
+    """Function for implementing DBSCAN cluster algorithm
+
+    Args:
+        X (np.ndarray): Clustering data
+
+    Returns:
+        tuple[np.ndarray, DBSCAN, float, int]: Tuple of labels, DBSCAN-model, best ep and best min for the model.
+    """
+    eps = [i for i in np.arange(0.2, 10, step=0.2)]
+    min_samples = np.arange(5, 21, 1)
+    sil = -1
+    for min_sample in min_samples:
+        for ep in eps:
+            model = DBSCAN(eps=ep, min_samples=min_sample).fit(X)
+            labels = model.labels_
+            unique_labels = set(labels)
+            if len(unique_labels - {-1}) > 1 and len(unique_labels - {-1}) < len(X):
+                test_sil = silhouette_score(X=X, labels=labels, metric='euclidean')
+                if sil < test_sil:
+                    best_ep = ep
+                    best_min = min_sample
+                    sil = test_sil
+    best_model = DBSCAN(eps=best_ep, min_samples=best_min).fit(X)
+    labels = best_model.labels_
+    return labels, best_model, float(best_ep), int(best_min)
+
+def add_dbscan_labels(df_clean:pd.DataFrame, labels:np.ndarray, features) -> tuple[pd.DataFrame, pd.DataFrame]:
+    df_labeled = df_clean.copy()
+    df_labeled["Cluster dbscan"] = labels
+    centroids = df_labeled.groupby("Cluster dbscan")[features].mean()
+    df_labeled.to_csv("./data/clustering/DBSCAN_df_with_labels.csv")
+    return df_labeled, centroids
