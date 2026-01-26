@@ -6,7 +6,7 @@ import category_encoders as ce
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OrdinalEncoder
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import FunctionTransformer
 
@@ -144,8 +144,7 @@ def prepreprocessing_pipeline(X, numerical_cols, ordinal_cols, ordinal_categorie
     """
     # Numerical pipeline: impute + scale
     numerical_pipeline = Pipeline([
-        ('imputer', SimpleImputer(strategy='median')),
-        ('scaler', StandardScaler())
+        ('imputer', SimpleImputer(strategy='median'))
     ])
     
     # Ordinal pipeline: impute + ordinal encode
@@ -174,9 +173,76 @@ def prepreprocessing_pipeline(X, numerical_cols, ordinal_cols, ordinal_categorie
         ('bool', bool_pipeline, bool_cols),
         ('nom', nominal_pipeline, nominal_cols)
     ])
-    X_processed = preprocessor.fit_transform(X)
+    final_preprocessor = Pipeline([
+        ('preprocessor', preprocessor),
+        ('scaler', StandardScaler())
+    ])
+
+    #X_processed = preprocessor.fit_transform(X)
+    X_processed = final_preprocessor.fit_transform(X)
+    return final_preprocessor, X_processed
+
+def prepreprocessing_pipeline_for_clustering(X, numerical_cols, ordinal_cols, ordinal_categories, nominal_cols, bool_cols):
+    """Creates a flexible preprocessing pipeline meant to handle numerical, ordinal, nominal and boolean values. 
+       The pipeline is created using sklearn.pipeline.Pipeline(), where a pipeline is created for each type of value.
+       The Numerical pipeline consists of a SimpleImputer() and a StandardScaler(). The Ordinal pipeline utilises 
+       a SimpleImputer() and a OrdinalEncoder(). The Nominal Pipeline consists of a SimpleImputer() and a CountEncoder(). 
+       The Boolean pipeline also utilizes a StandardImputer, and encoded False as 0 and True as 1.
+       CountEncoder was picked in order to prevent data leakage, and in order to make the pipeline more flexible when switching between
+       regression and classification tasks. All of the pipelines are combined in a ColumnTransformer() which is called on the entire dataset.
+
+    Args:
+        X (_type_): The X matrix of the training set
+        numerical_cols (_type_): List of numerical columns in the training set
+        ordinal_cols (_type_): List of ordinal columns in the training set
+        ordinal_categories (_type_): List of categories for each ordinal variable (i.e [low, medium, high])
+        nominal_cols (_type_): List of nominal columns in the training set
+        bool_cols (_type_): List of Boolean columns
+
+    Returns:
+        tuple[ColumnTransformer, ndarray]: fitted preprocessing pipeline and processed training set.
+    """
+    # Numerical pipeline: impute + scale
+    numerical_pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy='median'))
+    ])
     
-    return preprocessor, X_processed
+    # Ordinal pipeline: impute + ordinal encode
+    ordinal_pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('encoder', OrdinalEncoder(categories=ordinal_categories,
+                                   handle_unknown='use_encoded_value',
+                                   unknown_value=-1))
+    ])
+    
+    # Nominal pipeline: impute + target encode
+    nominal_pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('encoder', OneHotEncoder(sparse_output=False))
+    ])
+
+    bool_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy='most_frequent')),  # optional
+    ('to_int', FunctionTransformer(to_int_pre, feature_names_out="one-to-one"))
+    ])
+    
+    # Combine pipelines using ColumnTransformer
+    preprocessor = ColumnTransformer([
+        ('num', numerical_pipeline, numerical_cols),
+        ('ord', ordinal_pipeline, ordinal_cols),
+        ('bool', bool_pipeline, bool_cols),
+        ('nom', nominal_pipeline, nominal_cols)
+    ])
+    final_preprocessor = Pipeline([
+        ('preprocessor', preprocessor),
+        ('scaler', StandardScaler())
+    ])
+
+    #X_processed = preprocessor.fit_transform(X)
+    X_processed = final_preprocessor.fit_transform(X)
+    feature_names = final_preprocessor.named_steps['preprocessor'].get_feature_names_out()
+    df_out = pd.DataFrame(X_processed, columns=feature_names, index = X.index)
+    return final_preprocessor, df_out
 
 def unfit_prepreprocessing_pipeline(numerical_cols, ordinal_cols, ordinal_categories, nominal_cols, bool_cols):
     """Creates a flexible preprocessing pipeline meant to handle numerical, ordinal, nominal and boolean values. 

@@ -6,25 +6,35 @@ import numpy as np
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import DBSCAN, KMeans, AgglomerativeClustering
 from sklearn.model_selection import GridSearchCV
+from sklearn.decomposition import PCA
 
 ELBOW_INERTIA = 2
 
 def load_data(filepath):
     return pd.read_csv(filepath)
 
-def kmeans_cluster(X, random_state=42):
-    sil = -1
-    for n_clusters in range(2,11):
-        km = KMeans(n_clusters=n_clusters, init='k-means++', n_init=n_clusters, random_state=random_state)
+def kmeans_cluster(X, random_state=42, n_cluster = None):
+    
+    if n_cluster != None:
+        km = KMeans(n_clusters=n_cluster, init = 'k-means++', n_init=n_cluster, random_state=random_state)
         model = km.fit(X)
         labels = model.labels_
-        test_sil = silhouette_score(X, labels=labels, metric='euclidean')
-        if sil < test_sil:
-            best_n = n_clusters
-            sil = test_sil
-    best_model = KMeans(n_clusters=best_n, init='k-means++', n_init=best_n, random_state=random_state).fit(X)
-    labels = best_model.labels_
-    return labels, best_model, sil
+        sil = silhouette_score(X, labels = labels, metric = 'euclidean')
+        return labels, model, sil
+
+    else:
+        sil = -1
+        for n_clusters in range(2,11):
+            km = KMeans(n_clusters=n_clusters, init='k-means++', n_init=n_clusters, random_state=random_state)
+            model = km.fit(X)
+            labels = model.labels_
+            test_sil = silhouette_score(X, labels=labels, metric='euclidean')
+            if sil < test_sil:
+                best_n = n_clusters
+                sil = test_sil
+        best_model = KMeans(n_clusters=best_n, init='k-means++', n_init=best_n, random_state=random_state).fit(X)
+        labels = best_model.labels_
+        return labels, best_model, sil
 
 def kmeans_add_labels_and_cluster_centers(df_clean:pd.DataFrame, labels:np.ndarray, features) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Function for adding labels to original dataset, and for producing a dataframe of the final cluster centroids
@@ -96,6 +106,8 @@ def dbscan_clusters(X:np.ndarray|pd.DataFrame) -> tuple[np.ndarray, DBSCAN, floa
     Returns:
         tuple[np.ndarray, DBSCAN, float, int]: Tuple of labels, DBSCAN-model, best ep and best min for the model.
     """
+    best_ep = None
+    best_min = None
     eps = [i for i in np.arange(0.2, 10, step=0.2)]
     min_samples = np.arange(5, 21, 1)
     sil = -1
@@ -110,6 +122,8 @@ def dbscan_clusters(X:np.ndarray|pd.DataFrame) -> tuple[np.ndarray, DBSCAN, floa
                     best_ep = ep
                     best_min = min_sample
                     sil = test_sil
+    if best_ep == None or best_min == None:
+        raise ValueError("DBSCAN could not find any valid clustering solution")
     best_model = DBSCAN(eps=best_ep, min_samples=best_min).fit(X)
     labels = best_model.labels_
     return labels, best_model, float(best_ep), int(best_min)
@@ -120,3 +134,16 @@ def add_dbscan_labels(df_clean:pd.DataFrame, labels:np.ndarray, features) -> tup
     centroids = df_labeled.groupby("Cluster dbscan")[features].mean()
     df_labeled.to_csv("./data/clustering/DBSCAN_df_with_labels.csv")
     return df_labeled, centroids
+
+def apply_pca(X:pd.DataFrame | np.ndarray, n_composition=0.9) -> tuple[np.ndarray | pd.DataFrame, np.ndarray | pd.DataFrame, np.ndarray | pd.DataFrame]:
+    """Funciton for applying PCA to the clustering data
+
+    Args:
+        X (pd.DataFrame | np.ndarray): Clustering data
+        n_composition (float, optional): float signifying the relative amount of variance which PCA should explain. Defaults to 0.9.
+
+    Returns:
+        tuple[np.ndarray | pd.DataFrame, np.ndarray | pd.DataFrame, np.ndarray | pd.DataFrame]: tuple of PCA data, explained variance ratios per componen, and components
+    """
+    pca = PCA(n_components=n_composition)
+    return pca.fit_transform(X), pca.explained_variance_ratio_, pca.components_
