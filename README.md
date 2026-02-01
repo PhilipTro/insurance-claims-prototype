@@ -23,6 +23,12 @@ Python, pandas, scikit-learn, XGBoost, Streamlit, data preprocessing, EDA, regre
 ## Current Stage
 The prototype is implemented with a limited dataset. The next step is to identify a larger, more suitable dataset and rework the prototype accordingly.
 
+## Project Highlights
+- Built a working prototype for insurance claim prediction and premium calculation.
+- Implemented classification (XGBClassifier, RandomForest) and regression (TweddieRegressor) pipelines.
+- Developed an interactive Streamlit dashboard to explore predictions and visualize statistics.
+
+
 ## Screenshot of dashboard with quantitative statistics
 <img width="470" height="538" alt="image" src="https://github.com/user-attachments/assets/9af0f279-a61d-497c-90b6-5888e3a9b910" />
 
