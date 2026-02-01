@@ -34,6 +34,9 @@ The prototype is implemented with a limited dataset. The next step is to identif
 
 ## Screenshot of mock prediction menu in dashboard
 <img alt="image" src="https://github.com/user-attachments/assets/36a5f124-8a47-4473-900c-14524f094d37" />
+
+
+
 ## Data Disclaimer
 This project uses a publicly available insurance claims dataset commonly used for educational purposes.
 The data is used strictly for non-commercial, academic demonstration and prototyping.
