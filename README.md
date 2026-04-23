@@ -30,11 +30,10 @@ The prototype is implemented with a limited dataset. The next step is to identif
 
 
 ## Screenshot of dashboard with quantitative statistics
-<img alt="image" src="https://github.com/user-attachments/assets/9af0f279-a61d-497c-90b6-5888e3a9b910" />
+![dashboard stats](images/dashboard_stats.png)
 
 ## Screenshot of mock prediction menu in dashboard
-<img alt="image" src="https://github.com/user-attachments/assets/36a5f124-8a47-4473-900c-14524f094d37" />
-
+![prediction menu](images/prediction_menu.png)
 
 
 ## Data Disclaimer
